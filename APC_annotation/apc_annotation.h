@@ -1,7 +1,8 @@
 #ifndef APC_ANNOTATION_H
 #define APC_ANNOTATION_H
 
-#include <QtGui/QWidget>
+#include <iostream>
+#include <QtGui>
 #include "ui_apc_annotation.h"
 #include <QDirIterator>
 #include <QPushButton>
@@ -27,16 +28,12 @@
 #include <QMouseEvent>
 #include <string>
 #include <vector>
+#include <QShortcut>
 
 class QlabelClickable: public QLabel
 {
 
-	std::vector<cv::Point2f> convexVertices;
-	std::vector<cv::Point> convexPoints;
-	int noOfVertivces;
-	cv::Point2f firstPixel;
-	cv::Point2f clickedPixel;
-	bool flag_isConvex;
+
 	Q_OBJECT
 	public:
 	cv::Mat imageMaskBackup;
@@ -45,6 +42,11 @@ class QlabelClickable: public QLabel
 	QString cvImagesavepath;
 	QStringList objectslist;
 	QPixmap Qpiximage;
+	std::vector<cv::Point> convexVertices;
+	int noOfVertivces;
+	cv::Point firstPixel;
+	cv::Point clickedPixel;
+	bool flag_isConvex;
 	QlabelClickable(  QWidget * parent = 0 );
 	void saveAndContinue();
 	void saveCVoperations();
@@ -61,9 +63,10 @@ class QlabelClickable: public QLabel
 
 	protected:
 		void mousePressEvent ( QMouseEvent * event ) ;
+		void paintEvent(QPaintEvent* event);
 };
 
-class APC_annotation :  public QMainWindow
+class APC_annotation :  public QWidget
 {
     Q_OBJECT
 
@@ -79,7 +82,6 @@ private:
     Ui::APC_annotationClass ui;
     QString imagePath;
     QString dirPath;
-    QWidget* centralWidget;
     QVBoxLayout* layout;
     QDirIterator* workingDirIterator;
     QString cvImagesavepath;

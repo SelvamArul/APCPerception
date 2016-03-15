@@ -2,36 +2,48 @@
 APC_annotation::APC_annotation(){
 	this->dirPath = QString();
 	imageLabel = new QlabelClickable(this);
+	imageLabel->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Ignored);
 	imageLabel->Qpiximage = QPixmap("ais.png");
 	imageLabel->setBackgroundRole(QPalette::Base);
 	imageLabel->setPixmap(imageLabel->Qpiximage);
 	imageLabel->imageMaskBackup =cv::imread(this->imagePath.toStdString(),CV_LOAD_IMAGE_GRAYSCALE);
+
 }
 APC_annotation::~APC_annotation(){ }
 void APC_annotation::start()
     {
-	  //this->move(100,100);
-      QPushButton *button = new QPushButton(this);
-
-      button->setText("Select new Image");
+	  QPushButton *button = new QPushButton(this);
+      QPushButton *nextButton = new QPushButton(this);
+      button->setText("Select new Directory");
+      nextButton->setText("Next Image >>");
+      button->setMinimumSize(100,50);
+      nextButton->setMaximumSize(500,50);
 
       QObject::connect(button, SIGNAL(clicked()),this, SLOT(clickedSlot()));
+      QObject::connect(nextButton,SIGNAL( clicked() ) ,this,SLOT(returnfromChild()) );
       button->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
+      nextButton->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
 
-      this->centralWidget = new QWidget(this);
-      this->centralWidget->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
-      this->centralWidget->setGeometry(0,0,300,100);
+      QShortcut *shortcutOpen = new QShortcut(QKeySequence("Ctrl+O"), this);
+      QShortcut *shortcutNext = new QShortcut(QKeySequence("Ctrl+N"), this);
+
+      QObject::connect(shortcutOpen, SIGNAL(activated()), this, SLOT(clickedSlot()));
+      QObject::connect(shortcutNext, SIGNAL(activated()), this, SLOT(returnfromChild()));
+
+
+      this->resize(800,800);
       QPalette Pal(palette());
       Pal.setColor(QPalette::Background, Qt::black);
-      this->centralWidget->setAutoFillBackground(true);
-      this->centralWidget->setPalette(Pal);
-      this->layout = new QVBoxLayout (centralWidget);
-      this->layout->addWidget(button);
-      this->layout->addWidget(imageLabel);
 
-      setCentralWidget(centralWidget);
-      setWindowTitle("Ais APC");
+      QHBoxLayout* buttonLayout = new QHBoxLayout;
+      buttonLayout->addWidget(button);
+      buttonLayout->addWidget(nextButton);
 
+      this->layout = new QVBoxLayout (this);
+      this->layout->addLayout(buttonLayout);
+      this->layout->addWidget(this->imageLabel);
+
+      setWindowTitle("Ais Image annotation tool");
       show();
     }
 void APC_annotation::addNextImage()
@@ -41,21 +53,17 @@ void APC_annotation::addNextImage()
 
 void APC_annotation::slotPickNextImage()
 {
-	//this->show();
 	QMessageBox *msgBox  = new QMessageBox();
 	if (this->workingDirIterator->hasNext())
 	{
 		msgBox->setText("Loading next Image");
-		//msgBox->show();
-
-		this->imagePath = this->workingDirIterator->next();
-		this->dirPath = QFileInfo(imagePath).path();
-		QDir parentDir =QFileInfo(this->dirPath).dir()  ;
-		cvImagesavepath = parentDir.path()+"/" +QFileInfo(imagePath).fileName().split(".",QString::SkipEmptyParts).at(0);
-		if (!QDir(cvImagesavepath).exists() )
-		{
-			QDir().mkdir(cvImagesavepath);
-		}
+		QString temp = this->workingDirIterator->next();
+		cvImagesavepath = temp +"/" ;
+		if (!QDir(cvImagesavepath).exists())
+			{
+				QDir().mkdir(cvImagesavepath);
+			}
+		this->imagePath = temp + "/rgb.jpg";
 		this->setImageInitial();
 	}
 		else {
@@ -63,52 +71,73 @@ void APC_annotation::slotPickNextImage()
 			msgBox->show();
 		}
 
+
 }
 void APC_annotation::clickedSlot()
      {
+
+		/*
+		 * Iterate through the sub directories and look for image named "rgb.jpg"
+		 * create new images of objectmasks with name of the object
+		 */
         QMessageBox msgBox;
         msgBox.setWindowTitle("Hello");
-        QStringList fileName ;
+        QString fileName ;
         if (this->dirPath.isNull()	 == true) {
         	fileName =
-        		QFileDialog::getOpenFileNames(this, "Select a file to open...", QDir::homePath()+"/Desktop/ImageAnnotaion/",
-				tr("Images (*.png *.xpm *.jpg)"));
+        		QFileDialog::getExistingDirectory(this, "Select a directory to open", QDir::homePath()+"/arul/APCImages/",
+        				QFileDialog::ShowDirsOnly| QFileDialog::DontResolveSymlinks);
         }
         else
         {
         	fileName =
-        			QFileDialog::getOpenFileNames(this, "Select a file to open...", this->dirPath,
-					tr("Images (*.png *.xpm *.jpg)"));
+        			QFileDialog::getExistingDirectory(this, "Select a directory to open", this->dirPath,
+        					QFileDialog::ShowDirsOnly| QFileDialog::DontResolveSymlinks);
         }
-        QString strListItems = fileName.join("\n");
-        this->imagePath = strListItems;
-        this->dirPath = QFileInfo(imagePath).path();
-        this->workingDirIterator =new QDirIterator(this->dirPath,QStringList() << "*.jpg", QDir::Files);
-        //this->workingDirIterator->next();
-    	QDir parentDir =QFileInfo(this->dirPath).dir()  ;
-    	cvImagesavepath = parentDir.path() +"/"+ QFileInfo(imagePath).fileName().split(".",QString::SkipEmptyParts).at(0);
-		if (!QDir(cvImagesavepath).exists())
-		{
-			QDir().mkdir(cvImagesavepath);
-		}
-        setImageInitial();
+        std::cout<<"The directory is : "<<fileName.toUtf8().constData()<<std::endl;
+        if (!fileName.isEmpty())
+        {
+        	msgBox.setText(fileName);
+        				msgBox.show();
+			this->dirPath = QFileInfo(fileName).path();
+			std::cout<<"The dirPath is : "<<dirPath.toUtf8().constData()<<std::endl;
+			this->workingDirIterator =new QDirIterator(fileName, QDir::NoDotAndDotDot| QDir::Dirs ,QDirIterator::Subdirectories);
+
+			// the directory iterator has been initialized
+			// From now on, I should work only with this iterator
+			QString temp = this->workingDirIterator->next();
+			std::cout<<"Returned from temp "<<temp.toUtf8().constData()<<std::endl;
+
+			cvImagesavepath = temp +"/" ;
+			std::cout<<"The cvImagesavepath is : "<<cvImagesavepath.toUtf8().constData()<<std::endl;
+			if (!QDir(cvImagesavepath).exists())
+			{
+				QDir().mkdir(cvImagesavepath);
+			}
+			this->imagePath = temp + "/rgb.jpg";
+			std::cout<<"The imageread path  is : "<<this->imagePath.toUtf8().constData()<<std::endl;
+			setImageInitial();
+        }
 
      }
 void APC_annotation::setImageInitial()
 {
+	this->imageLabel->flag_isConvex =false;
+	this->imageLabel->noOfVertivces =0;
+	this->imageLabel->convexVertices.clear();
 	// initialize opencv image
 	QMessageBox msgBox;
 	msgBox.setText("setImageInitial");
-	//msgBox.show();
 	imageLabel->Qpiximage = QPixmap (this->imagePath);
-	imageLabel->setFixedSize(imageLabel->Qpiximage.size());
-	imageLabel->setPixmap(imageLabel->Qpiximage);
+	imageLabel->setPixmap(imageLabel->Qpiximage /*.scaled(480,270,Qt::KeepAspectRatio)*/); //.scaled(1000,1000,Qt::KeepAspectRatio)
+	imageLabel->setScaledContents(true);
 	imageLabel->imageMaskBackup =cv::imread(this->imagePath.toStdString(),CV_LOAD_IMAGE_GRAYSCALE);
 	imageLabel->imageMaskBackup = cv::Scalar(0);
 	imageLabel->dirPath =this->dirPath;
 	imageLabel->imagePath=this->imagePath;
 	imageLabel->cvImagesavepath=this->cvImagesavepath;
 	this->layout->update();
+	this->isNextButtonadded = true;
 	show();
 }
 
@@ -120,8 +149,8 @@ QString APC_annotation::getImagePath()
 
 void APC_annotation::returnfromChild()
 {
-
-	this->addNextImage();
+	if (this->isNextButtonadded)
+		this->slotPickNextImage();
 }
 
 
@@ -146,33 +175,36 @@ void QlabelClickable::slotClicked()
 {
 	QMessageBox Msgbox;
 	std::ostringstream ss;
-	ss <<clickedPixel.x<<"  "<<clickedPixel.y;
-	if (this->noOfVertivces ==0){
-		firstPixel = clickedPixel;
-	}
-	Msgbox.setText(QString::fromStdString(ss.str()));
-	//Msgbox.show();
 	QImage tmp(this->pixmap()->toImage());
 	QPainter painter(&tmp);
 	QPen paintpen(Qt::red);
-	paintpen.setWidth(2);
+	paintpen.setWidth(5);
 	QPoint p1;
-	p1.setX(clickedPixel.x);
-	p1.setY(clickedPixel.y);
+
+	QRect rect = pixmap()->rect();
+	float scale = std::min((float)width()/rect.width(), (float)height()/rect.height());
+
+	p1 = (1.0/scale) * QPoint(clickedPixel.x, clickedPixel.y);
+	if (this->noOfVertivces ==0){
+			firstPixel = cv::Point(p1.x(),p1.y());
+		}
+	ss <<p1.x()<<"  "<<p1.y();
+	Msgbox.setText(QString::fromStdString(ss.str()));
+	Msgbox.show();
 	painter.setPen(paintpen);
 	painter.drawPoint(p1);
+
 
 	if (this->noOfVertivces >0)
 	{
 		//check if current pixel is close to first Pixel
-		// I'm Considering euclidean distance and distance of 100 pixels
-		if (pow (this->firstPixel.x - clickedPixel.x,2)+ pow (this->firstPixel.y - clickedPixel.y,2) <=100)
+		// I'm Considering euclidean distance and distance of 10 pixels
+		if (pow (this->firstPixel.x - p1.x(),2)+ pow (this->firstPixel.y - p1.y(),2) <=100)
 		{
-			clickedPixel.x = this->firstPixel.x;
-			clickedPixel.y = this->firstPixel.y;
+			p1 = QPoint(firstPixel.x, firstPixel.y);
 			this->flag_isConvex=true;
 		}
-		this->convexVertices.push_back(clickedPixel);
+		this->convexVertices.push_back(cv::Point(p1.x(),p1.y()));
 		this->noOfVertivces++;
 		painter.drawLine(this->convexVertices[this->convexVertices.size() -2].x,
 				this->convexVertices[this->convexVertices.size() -2].y,
@@ -181,7 +213,7 @@ void QlabelClickable::slotClicked()
 	}
 	else
 	{
-		this->convexVertices.push_back(clickedPixel);
+		this->convexVertices.push_back(cv::Point(p1.x(),p1.y()));
 		this->noOfVertivces++;
 	}
 	this->setPixmap(QPixmap::fromImage(tmp));
@@ -193,7 +225,7 @@ void QlabelClickable::slotClicked()
 
 void QlabelClickable::slotConvexDone()
 {
-	 QMessageBox::StandardButton reply;
+	/* QMessageBox::StandardButton reply;
 	  reply = QMessageBox::question(this, "Test", "Loop closed, Save current image and select next?",
 	                                QMessageBox::Yes|QMessageBox::No);
 	  if (reply == QMessageBox::Yes) {
@@ -201,26 +233,24 @@ void QlabelClickable::slotConvexDone()
 		  emit callbackParent();
 	  } else {
 		  saveAndContinue();
-	  }
+	  }*/
+	saveAndContinue();
 }
 
 void QlabelClickable::saveCVoperations()
 {
-		//convert Point2f to Point2i
-		for (int i=0;i<this->convexVertices.size();i++) {
-			this->convexPoints.push_back(cv::Point((int) this->convexVertices[i].x,
-					(int) this->convexVertices[i].y));
-		}
 		cv::Mat objectMask = imageMaskBackup.clone();
-		cv::Point* tempPtr = &(this->convexPoints[0]);
-		fillConvexPoly(objectMask,tempPtr,convexPoints.size(),cv::Scalar(255));
+		cv::Point* tempPtr = &(this->convexVertices[0]);
+		fillConvexPoly(objectMask,tempPtr,convexVertices.size(),cv::Scalar(255));
 		QWidget * newWidget= new QWidget();
 		QString objectSelected = QInputDialog::getItem(newWidget,"Object list","Select the object name ",
 				this->objectslist);
-		QString imgname =   cvImagesavepath +"/"+objectSelected+".png";
-		cv::imwrite(imgname.toStdString(),objectMask );
-		QMessageBox *Msgbox = new QMessageBox();
-		Msgbox->setText("Image written to " + imgname + " # "+ QString::number(convexPoints.size()));
+		if (!objectSelected.trimmed().isEmpty()) {
+			QString imgname =   cvImagesavepath +"/"+objectSelected+".png";
+			cv::imwrite(imgname.toStdString(),objectMask );
+			QMessageBox *Msgbox = new QMessageBox();
+			Msgbox->setText("Image written to " + imgname + " # "+ QString::number(convexVertices.size()));
+		}
 		//Msgbox->show();
 
 }
@@ -235,19 +265,32 @@ void QlabelClickable::saveAndContinue()
 	this->flag_isConvex =false;
 	this->noOfVertivces =0;
 	this->convexVertices.clear();
-	this->convexPoints.clear();
 	this->show();
 }
 void QlabelClickable::mousePressEvent ( QMouseEvent *event )
 {
-	this->clickedPixel= cv::Point2f((float)event->x(), (float)event->y());
+	this->clickedPixel= cv::Point(event->x(), event->y());
 	if (!this->flag_isConvex){
 		emit clicked();
 	}
 }
 
+void QlabelClickable::paintEvent(QPaintEvent* event)
+{
+	QPainter painter(this);
 
+	if(!pixmap())
+		return;
 
+	QRect rect = pixmap()->rect();
+
+	float scale = std::min((float)width()/rect.width(), (float)height()/rect.height());
+
+	rect.setWidth(rect.width() * scale);
+	rect.setHeight(rect.height() * scale);
+
+	painter.drawPixmap(rect, *pixmap());
+}
 
 
 
