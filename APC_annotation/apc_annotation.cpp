@@ -12,35 +12,37 @@ APC_annotation::APC_annotation(){
 APC_annotation::~APC_annotation(){ }
 void APC_annotation::start()
     {
-	  QPushButton *button = new QPushButton(this);
-      QPushButton *nextButton = new QPushButton(this);
+	  std::unique_ptr<QPushButton> button(new QPushButton);
+	  std::unique_ptr<QPushButton> nextButton(new QPushButton);
       button->setText("Select new Directory");
       nextButton->setText("Next Image >>");
       button->setMinimumSize(100,50);
       nextButton->setMaximumSize(500,50);
 
-      QObject::connect(button, SIGNAL(clicked()),this, SLOT(clickedSlot()));
-      QObject::connect(nextButton,SIGNAL( clicked() ) ,this,SLOT(returnfromChild()) );
+      QObject::connect(button.get(), SIGNAL(clicked()),this, SLOT(clickedSlot()));
+      QObject::connect(nextButton.get(),SIGNAL( clicked() ) ,this,SLOT(returnfromChild()) );
       button->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
       nextButton->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
 
-      QShortcut *shortcutOpen = new QShortcut(QKeySequence("Ctrl+O"), this);
-      QShortcut *shortcutNext = new QShortcut(QKeySequence("Ctrl+N"), this);
+      std::unique_ptr<QShortcut> shortcutOpen(new QShortcut(QKeySequence("Ctrl+O"), this));
+      std::unique_ptr<QShortcut> shortcutNext(new QShortcut(QKeySequence("Ctrl+N"), this));
 
-      QObject::connect(shortcutOpen, SIGNAL(activated()), this, SLOT(clickedSlot()));
-      QObject::connect(shortcutNext, SIGNAL(activated()), this, SLOT(returnfromChild()));
+
+
+      QObject::connect(shortcutOpen.get(), SIGNAL(activated()), this, SLOT(clickedSlot()));
+      QObject::connect(shortcutNext.get(), SIGNAL(activated()), this, SLOT(returnfromChild()));
 
 
       this->resize(800,800);
       QPalette Pal(palette());
       Pal.setColor(QPalette::Background, Qt::black);
 
-      QHBoxLayout* buttonLayout = new QHBoxLayout;
-      buttonLayout->addWidget(button);
-      buttonLayout->addWidget(nextButton);
+      std::unique_ptr<QHBoxLayout> buttonLayout(new QHBoxLayout);
+      buttonLayout.get()->addWidget(button.get());
+      buttonLayout.get()->addWidget(nextButton.get());
 
       this->layout = new QVBoxLayout (this);
-      this->layout->addLayout(buttonLayout);
+      this->layout->addLayout(buttonLayout.get());
       this->layout->addWidget(this->imageLabel);
 
       setWindowTitle("Ais Image annotation tool");

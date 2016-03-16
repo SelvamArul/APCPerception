@@ -29,6 +29,7 @@
 #include <string>
 #include <vector>
 #include <QShortcut>
+#include <memory>
 
 class QlabelClickable: public QLabel
 {
