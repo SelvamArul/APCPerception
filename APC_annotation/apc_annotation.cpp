@@ -55,10 +55,10 @@ void APC_annotation::addNextImage()
 
 void APC_annotation::slotPickNextImage()
 {
-	QMessageBox *msgBox  = new QMessageBox();
+	QMessageBox msgBox;
 	if (this->workingDirIterator->hasNext())
 	{
-		msgBox->setText("Loading next Image");
+		msgBox.setText("Loading next Image");
 		QString temp = this->workingDirIterator->next();
 		cvImagesavepath = temp +"/" ;
 		if (!QDir(cvImagesavepath).exists())
@@ -69,8 +69,8 @@ void APC_annotation::slotPickNextImage()
 		this->setImageInitial();
 	}
 		else {
-			msgBox->setText("No more images");
-			msgBox->show();
+			msgBox.setText("No more images");
+			msgBox.show();
 		}
 
 
