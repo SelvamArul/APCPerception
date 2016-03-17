@@ -1,0 +1,2 @@
+g++ -c -m64 -pipe -O2 -Wall -std=c++11  -W -D_REENTRANT -DQT_NO_DEBUG -DQT_WEBKIT_LIB -DQT_SVG_LIB -DQT_OPENGL_LIB -DQT_GUI_LIB -DQT_CORE_LIB -DQT_SHARED -I/usr/share/qt4/mkspecs/linux-g++-64 -I. -I/usr/include/qt4/QtCore -I/usr/include/qt4/QtGui -I/usr/include/qt4/QtOpenGL -I/usr/include/qt4/QtSvg -I/usr/include/qt4/QtWebKit -I/usr/include/qt4 -I/usr/include/opencv2 -I/usr/include/opencv -I/usr/X11R6/include -Irelease -I. -o release/main.o main.cpp
+ 
